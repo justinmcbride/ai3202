@@ -7,18 +7,6 @@ COST_ADJACENT = 10
 COST_DIAGONAL = 14
 COST_MOUNTAIN = 10
 
-class Tile:
-  def __init__(self, loc):
-    self.loc = loc
-
-class Tile_Normal:
-  def __init__(self, loc):
-    self.loc = loc
-
-class Tile_Mountain:
-  def __init__(self, loc):
-    self.loc = loc
-
 class Node:
   def __init__(self, parent, loc):
     self.parent = parent
@@ -26,46 +14,86 @@ class Node:
     self.f = None
     self.g = None
     self.h = None
+  def __str__(self):
+    return "Node(parent={},loc={},f={},g={},h={}".format(self.parent, self.loc, self.f, self.g, self.h)
 
+def NodeToPath(node):
+  if node.parent == None:
+    return "{}".format(node.loc)
+  else:
+    return "{} => {}".format(NodeToPath(node.parent), node.loc)
 
-def minCostNode(l):
+def manhattanDistances(world, (goalX, goalY)):
+  distances = {}
+  for i, row in enumerate(world):
+    for j, col in enumerate(row):
+      distances[(i,j)] = abs(goalX-i) + abs(goalY-j)
+  return distances
+
+def manhattanDistance( (startX, startY), (goalX, goalY) ):
+  return abs(goalX-startX) + abs(goalY-startY)
+
+def minCost(l):
   #todo: handle ties with <=
+  # print("--Finding minCostNode")
   minCost = float("inf")
   node = None
   for item in l:
     if item.f < minCost:
+      minCost = item.f
       node = item
+      # print("--New minCost: ({}) : {}".format(node.loc,minCost))
+  # print("--!Found min = {}".format(str(node)))
   return node
 
-def lowerCostExists(l, f):
+def lowerCostExists(l, n):
+  # print("--in lowerCostExists..")
+  # print("--f = , l= {}".format(f,",".join([str(x.loc) for x in l])))
   for item in l:
-    if item.f < f:
-      return true
-  return false
+    if item.f < n.f and item.loc == n.loc:
+      # print("--!found lower cost")
+      return True
+  # print("--! didn't find lower cost")
+  return False
 
 def aStar(world, start, goal):
   lOpen = []
   lClosed = []
 
-  lOpen.append( Node(None, start) )
+  rootNode = Node(None, start)
+  rootNode.h = manhattanDistance(start, goal)
+  rootNode.g = 0
+  rootNode.f = rootNode.h
+  lOpen.append(rootNode)
+  # print("Starting search..")
+  # print("lOpen= " + ",".join([str(x) for x in lOpen]))
   while len(lOpen) != 0:
-    minCostNode = minCostNode(lOpen)
+    # print("In loop.. len(lOpen) = {}".format(len(lOpen)))
+    minCostNode = minCost(lOpen)
     lOpen.remove(minCostNode)
     if minCostNode == goal:
-      break
+      # print("mincostnode is goal.. breaking")
+      return minCostNode
     lClosed.append(minCostNode)
     for (nextLocation,cost) in world[minCostNode.loc]:
-      if nextNode.loc == goal:
-        break
+      # print("-in foor loop.. nextloc = {}, cost = {}".format(nextLocation, cost))
+      
+      nextNode = Node(minCostNode, nextLocation)
       nextNode.g = minCostNode.g + cost
       nextNode.h = manhattanDistance(nextNode.loc, goal)
       nextNode.f = nextNode.g + nextNode.h
+      # print("potentialnextnode = {}".format(nextNode))
+      if nextLocation == goal:
+        # print ("--!nextlocation is goal.. breaking")
+        return nextNode
 
-      if lowerCostExists(lOpen) or lowerCostExists(lClosed):
+      if lowerCostExists(lOpen, nextNode) or lowerCostExists(lClosed, nextNode):
+        # print("~~some lower cost exists.. not adding node to open")
         pass
-      else lOpen.append(nextNode)
+      else:
+        lOpen.append(nextNode)
     lClosed.append(minCostNode)
-  return lClosed
+  return "couldn't get there"
 
 def readWorld(filename):
   world = []
@@ -156,17 +184,13 @@ def parseWorld(world, rows, cols):
     #end of row
   return worldMap
 
-def manhattanDistances(world, (goalX, goalY)):
-  distances = {}
-  for i, row in enumerate(world):
-    for j, col in enumerate(row):
-      distances[(i,j)] = abs(goalX-i) + abs(goalY-j)
-  return distances
-
-def manhattanDistance( (startX, startY), (goalX, goalY) ):
-  return abs(goalX-startX) + abs(goalY-startY)
 
 (world1,r1,c1) = readWorld("World1.txt")
 (world2,r2,c2) = readWorld("World2.txt")
 
-worldMap1 = parseWorld(world1,r1,c1))
+worldMap1 = parseWorld(world1,r1,c1)
+worldMap2 = parseWorld(world2,r2,c2)
+path = aStar(worldMap1, (7,0), (0,9) )
+print NodeToPath(path)
+path2 = aStar(worldMap2, (7,0), (0,9) )
+print NodeToPath(path2)
