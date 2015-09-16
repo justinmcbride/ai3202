@@ -1,4 +1,7 @@
 from collections import defaultdict
+import sys
+import getopt
+
 TILE_NORMAL = 0
 TILE_MOUNTAIN = 1
 TILE_WALL = 2
@@ -10,12 +13,12 @@ COST_MOUNTAIN = 10
 class Node:
   def __init__(self, parent, loc):
     self.parent = parent
-    self.loc = loc
+    self.pos = loc
     self.f = None
     self.g = None
     self.h = None
   def __str__(self):
-    return "Node(loc={},f={},g={},h={}".format(self.loc, self.f, self.g, self.h)
+    return "Node(loc={},f={},g={},h={}".format(self.pos, self.f, self.g, self.h)
 
 class Heuristic:
   selected = None
@@ -24,13 +27,18 @@ class Heuristic:
     return (abs(goalX-startX) + abs(goalY-startY)) * 10
   @staticmethod
   def Custom( (startX, startY), (goalX, goalY) ):
-    pass
+    x = abs(startX-goalX)
+    y = abs(startY-goalY)
+    if x > y:
+      return 14*y + 10*(x-y)
+    else:
+      return 14*x + 10*(y-x)
 
 def NodeToPath(node):
   if node.parent == None:
-    return "{}".format(node.loc)
+    return "{}".format(node.pos)
   else:
-    return "{} => {}".format(NodeToPath(node.parent), node.loc)
+    return "{} => {}".format(NodeToPath(node.parent), node.pos)
 
 def minCost(l):
   #todo: handle ties with <=
@@ -45,7 +53,7 @@ def minCost(l):
 
 def lowerCostExists(l, n):
   for item in l:
-    if item.f < n.f and item.loc == n.loc:
+    if item.f < n.f and item.pos == n.pos:
       return True
   return False
 
@@ -60,24 +68,23 @@ def aStar(world, start, goal):
   lOpen.append(rootNode)
   print("Starting search..")
   while len(lOpen) != 0:
-    minCostNode = minCost(lOpen)
-    lOpen.remove(minCostNode)
-    if minCostNode == goal:
-      return minCostNode
-    lClosed.append(minCostNode)
-    for (nextLocation,cost) in world[minCostNode.loc]:      
-      nextNode = Node(minCostNode, nextLocation)
-      nextNode.g = minCostNode.g + cost
-      nextNode.h = Heuristic.selected(nextNode.loc, goal)
+    currentNode = minCost(lOpen)
+    lOpen.remove(currentNode)
+    if currentNode == goal:
+      return currentNode
+    lClosed.append(currentNode)
+    for (nextLocation,cost) in world[currentNode.pos]:      
+      nextNode = Node(currentNode, nextLocation)
+      nextNode.g = currentNode.g + cost
+      nextNode.h = Heuristic.selected(nextNode.pos, goal)
       nextNode.f = nextNode.g + nextNode.h
-      if nextLocation == goal:
+      if nextNode.pos == goal:
         return nextNode
-
       if lowerCostExists(lOpen, nextNode) or lowerCostExists(lClosed, nextNode):
         pass
       else:
         lOpen.append(nextNode)
-    lClosed.append(minCostNode)
+    lClosed.append(currentNode)
   return None
 
 def readWorld(filename):
@@ -158,18 +165,32 @@ def parseWorld(world, rows, cols):
     #end of row
   return worldMap
 
-(world1,r1,c1) = readWorld("World1.txt")
-(world2,r2,c2) = readWorld("World2.txt")
+def main(argv):
+  (world1,r1,c1) = readWorld("World1.txt")
+  (world2,r2,c2) = readWorld("World2.txt")
+  Heuristic.selected = staticmethod(Heuristic.Manhattan)
+  try:
+    opts, args = getopt.getopt(argv, "h:", ["heuristic="])
+  except getopt.GetoptError:
+    sys.exit(2)
+  for opt, arg in opts:
+    if opt in ("-h", "--heuristic"):
+      if arg == "manhattan" or arg == "Manhattan":
+        Heuristic.selected = staticmethod(Heuristic.Manhattan)
+      elif arg == "custom" or arg == "Custom":
+        Heuristic.selected = staticmethod(Heuristic.Custom)
+      else:
+        print("No -h/--heuristic option specified.. Defaulting to Manhattan")
+        Heuristic.selected = staticmethod(Heuristic.Manhattan)
+  worldMap1 = parseWorld(world1,r1,c1)
+  path = aStar(worldMap1, (7,0), (0,9) )
+  print NodeToPath(path)
+  print "Cost: " + str(path.g)
 
-#todo: cli opt heuristic
-Heuristic.selected = staticmethod(Heuristic.Manhattan)
+  worldMap2 = parseWorld(world2,r2,c2)
+  path2 = aStar(worldMap2, (7,0), (0,9) )
+  print NodeToPath(path2)
+  print "Cost: " + str(path2.g)
 
-worldMap1 = parseWorld(world1,r1,c1)
-path = aStar(worldMap1, (7,0), (0,9) )
-print NodeToPath(path)
-print "Cost: " + str(path.f)
-
-worldMap2 = parseWorld(world2,r2,c2)
-path2 = aStar(worldMap2, (7,0), (0,9) )
-print NodeToPath(path2)
-print "Cost: " + str(path2.f)
+if __name__ == '__main__':
+  main(sys.argv[1:])
