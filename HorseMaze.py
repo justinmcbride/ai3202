@@ -15,7 +15,16 @@ class Node:
     self.g = None
     self.h = None
   def __str__(self):
-    return "Node(parent={},loc={},f={},g={},h={}".format(self.parent, self.loc, self.f, self.g, self.h)
+    return "Node(loc={},f={},g={},h={}".format(self.loc, self.f, self.g, self.h)
+
+class Heuristic:
+  selected = None
+  @staticmethod
+  def Manhattan( (startX, startY), (goalX, goalY) ):
+    return (abs(goalX-startX) + abs(goalY-startY)) * 10
+  @staticmethod
+  def Custom( (startX, startY), (goalX, goalY) ):
+    pass
 
 def NodeToPath(node):
   if node.parent == None:
@@ -23,37 +32,21 @@ def NodeToPath(node):
   else:
     return "{} => {}".format(NodeToPath(node.parent), node.loc)
 
-def manhattanDistances(world, (goalX, goalY)):
-  distances = {}
-  for i, row in enumerate(world):
-    for j, col in enumerate(row):
-      distances[(i,j)] = abs(goalX-i) + abs(goalY-j)
-  return distances
-
-def manhattanDistance( (startX, startY), (goalX, goalY) ):
-  return abs(goalX-startX) + abs(goalY-startY)
-
 def minCost(l):
   #todo: handle ties with <=
-  # print("--Finding minCostNode")
   minCost = float("inf")
   node = None
   for item in l:
     if item.f < minCost:
       minCost = item.f
       node = item
-      # print("--New minCost: ({}) : {}".format(node.loc,minCost))
-  # print("--!Found min = {}".format(str(node)))
   return node
 
+
 def lowerCostExists(l, n):
-  # print("--in lowerCostExists..")
-  # print("--f = , l= {}".format(f,",".join([str(x.loc) for x in l])))
   for item in l:
     if item.f < n.f and item.loc == n.loc:
-      # print("--!found lower cost")
       return True
-  # print("--! didn't find lower cost")
   return False
 
 def aStar(world, start, goal):
@@ -61,39 +54,31 @@ def aStar(world, start, goal):
   lClosed = []
 
   rootNode = Node(None, start)
-  rootNode.h = manhattanDistance(start, goal)
+  rootNode.h = Heuristic.selected(start, goal)
   rootNode.g = 0
   rootNode.f = rootNode.h
   lOpen.append(rootNode)
-  # print("Starting search..")
-  # print("lOpen= " + ",".join([str(x) for x in lOpen]))
+  print("Starting search..")
   while len(lOpen) != 0:
-    # print("In loop.. len(lOpen) = {}".format(len(lOpen)))
     minCostNode = minCost(lOpen)
     lOpen.remove(minCostNode)
     if minCostNode == goal:
-      # print("mincostnode is goal.. breaking")
       return minCostNode
     lClosed.append(minCostNode)
-    for (nextLocation,cost) in world[minCostNode.loc]:
-      # print("-in foor loop.. nextloc = {}, cost = {}".format(nextLocation, cost))
-      
+    for (nextLocation,cost) in world[minCostNode.loc]:      
       nextNode = Node(minCostNode, nextLocation)
       nextNode.g = minCostNode.g + cost
-      nextNode.h = manhattanDistance(nextNode.loc, goal)
+      nextNode.h = Heuristic.selected(nextNode.loc, goal)
       nextNode.f = nextNode.g + nextNode.h
-      # print("potentialnextnode = {}".format(nextNode))
       if nextLocation == goal:
-        # print ("--!nextlocation is goal.. breaking")
         return nextNode
 
       if lowerCostExists(lOpen, nextNode) or lowerCostExists(lClosed, nextNode):
-        # print("~~some lower cost exists.. not adding node to open")
         pass
       else:
         lOpen.append(nextNode)
     lClosed.append(minCostNode)
-  return "couldn't get there"
+  return None
 
 def readWorld(filename):
   world = []
@@ -109,7 +94,6 @@ def readWorld(filename):
         break
       nElems = len(elems)
       for e in elems:
-        # print("[" + str(row) + "," + str(col) + "] = " + e)
         currentRow.append(int(e))
         col += 1
       world.append(currentRow)
@@ -121,16 +105,8 @@ def adjacentTiles(row, col, maxRow, maxCol):
   if col >= 0:
     if (col-1) >= 0:
       neighbors.append((row,col-1)) #left
-      # if (row-1) >= 0:
-      #   neighbors.append((row-1,col-1)) #upleft
-      # if (row+1) < maxRow:
-      #   neighbors.append((row+1,col-1)) #downleft
     if (col+1) < maxCol:
       neighbors.append((row,col+1)) #right
-      # if (row-1) >= 0:
-      #   neighbors.append((row-1,col+1)) #upright
-      # if (row+1) < maxRow:
-      #   neighbors.append((row+1,col+1)) #downright
   if row >= 0:
     if (row-1) >= 0:
       neighbors.append((row-1,col)) #up
@@ -169,9 +145,7 @@ def parseWorld(world, rows, cols):
         elif tileType == TILE_WALL:
           # don't need to add this
           pass
-      for n in diagonalTiles(i,j,rows,cols):
-        nX = n[0]
-        nY = n[1]
+      for nX, nY in diagonalTiles(i,j,rows,cols):
         tileType = world[nX][nY]
         if tileType == TILE_NORMAL:
           worldMap[(i,j)].add( ((nX, nY),COST_DIAGONAL) )
@@ -184,13 +158,18 @@ def parseWorld(world, rows, cols):
     #end of row
   return worldMap
 
-
 (world1,r1,c1) = readWorld("World1.txt")
 (world2,r2,c2) = readWorld("World2.txt")
 
+#todo: cli opt heuristic
+Heuristic.selected = staticmethod(Heuristic.Manhattan)
+
 worldMap1 = parseWorld(world1,r1,c1)
-worldMap2 = parseWorld(world2,r2,c2)
 path = aStar(worldMap1, (7,0), (0,9) )
 print NodeToPath(path)
+print "Cost: " + str(path.f)
+
+worldMap2 = parseWorld(world2,r2,c2)
 path2 = aStar(worldMap2, (7,0), (0,9) )
 print NodeToPath(path2)
+print "Cost: " + str(path2.f)
