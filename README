@@ -1,0 +1,20 @@
+Justin McBride
+CSCI 3202 -- Intro to AI
+Assignment 3 (Programming Assignment 2)
+A* Search
+
+RUNNING
+-------
+To run the program, simply call
+
+$ python HorseMaze.py [-w worldfile] [-h manhattan|custom]
+
+w: the file to parse that becomes our world
+h: heuristic to use
+  manhattan: the required manhattan heuristic
+  custom: a custom heuristic
+
+DETAILS
+-------
+My implementation builds a directed graph with weights of all
+possible paths. When performing a search, 
