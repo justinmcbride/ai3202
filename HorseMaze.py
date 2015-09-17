@@ -20,6 +20,8 @@ class Node:
   def __str__(self):
     return "Node(loc={},f={},g={},h={}".format(self.pos, self.f, self.g, self.h)
 
+# This class is to make the heuristic to be used selectable
+# The .selected variable will point to the selected heuristic
 class Heuristic:
   selected = None
   @staticmethod
@@ -34,14 +36,15 @@ class Heuristic:
     else:
       return 14*x + 10*(y-x)
 
+# Use recursion and induction to print out the path
 def NodeToPath(node):
   if node.parent == None:
     return "{}".format(node.pos)
   else:
     return "{} => {}".format(NodeToPath(node.parent), node.pos)
 
+# Find the node with the minimum cost in l to travel to
 def minCost(l):
-  #todo: handle ties with <=
   minCost = float("inf")
   node = None
   for item in l:
@@ -50,7 +53,8 @@ def minCost(l):
       node = item
   return node
 
-
+# Search through list l for a lower cost node, if and only
+# if they are the same position
 def lowerCostExists(l, n):
   for item in l:
     if item.f < n.f and item.pos == n.pos:
@@ -71,7 +75,8 @@ def aStar(world, start, goal):
     currentNode = minCost(lOpen)
     lOpen.remove(currentNode)
     if currentNode == goal:
-      return currentNode
+      lClosed.append(currentNode)
+      return (currentNode, len(lClosed))
     lClosed.append(currentNode)
     for (nextLocation,cost) in world[currentNode.pos]:      
       nextNode = Node(currentNode, nextLocation)
@@ -79,33 +84,14 @@ def aStar(world, start, goal):
       nextNode.h = Heuristic.selected(nextNode.pos, goal)
       nextNode.f = nextNode.g + nextNode.h
       if nextNode.pos == goal:
-        return nextNode
+        lClosed.append(nextNode)
+        return (nextNode, len(lClosed))
       if lowerCostExists(lOpen, nextNode) or lowerCostExists(lClosed, nextNode):
         pass
       else:
         lOpen.append(nextNode)
     lClosed.append(currentNode)
   return None
-
-def readWorld(filename):
-  world = []
-  nRow = 0
-  nElems = 0
-  with open(filename, 'r') as f:
-    for row, line in enumerate(f):
-      currentRow = []
-      col = 0
-      line = line.strip("\n")
-      elems = line.split(' ')
-      if ((row != 0) and len(elems) != nElems):
-        break
-      nElems = len(elems)
-      for e in elems:
-        currentRow.append(int(e))
-        col += 1
-      world.append(currentRow)
-      nRow += 1
-  return (world, nRow, nElems)
 
 def adjacentTiles(row, col, maxRow, maxCol):
   neighbors = []
@@ -134,6 +120,26 @@ def diagonalTiles(row, col, maxRow, maxCol):
     if (row+1) < maxRow:
       neighbors.append((row+1,col+1)) #downright
   return neighbors
+
+def readWorld(filename):
+  world = []
+  nRow = 0
+  nElems = 0
+  with open(filename, 'r') as f:
+    for row, line in enumerate(f):
+      currentRow = []
+      col = 0
+      line = line.strip("\n")
+      elems = line.split(' ')
+      if ((row != 0) and len(elems) != nElems):
+        break
+      nElems = len(elems)
+      for e in elems:
+        currentRow.append(int(e))
+        col += 1
+      world.append(currentRow)
+      nRow += 1
+  return (world, nRow, nElems)
 
 def parseWorld(world, rows, cols):
   worldMap = defaultdict(set)
@@ -166,31 +172,38 @@ def parseWorld(world, rows, cols):
   return worldMap
 
 def main(argv):
-  (world1,r1,c1) = readWorld("World1.txt")
-  (world2,r2,c2) = readWorld("World2.txt")
+  worldFile = "World1.txt"
+  
   Heuristic.selected = staticmethod(Heuristic.Manhattan)
   try:
-    opts, args = getopt.getopt(argv, "h:", ["heuristic="])
+    opts, args = getopt.getopt(argv, "h:w:", ["heuristic=","world="])
   except getopt.GetoptError:
     sys.exit(2)
   for opt, arg in opts:
+    if opt in ("-w", "--world"):
+      worldFile = arg
     if opt in ("-h", "--heuristic"):
       if arg == "manhattan" or arg == "Manhattan":
+        print("Selected heuristic: Manhattan")
         Heuristic.selected = staticmethod(Heuristic.Manhattan)
       elif arg == "custom" or arg == "Custom":
+        print("Selected heuristic: Custom")
         Heuristic.selected = staticmethod(Heuristic.Custom)
       else:
-        print("No -h/--heuristic option specified.. Defaulting to Manhattan")
-        Heuristic.selected = staticmethod(Heuristic.Manhattan)
-  worldMap1 = parseWorld(world1,r1,c1)
-  path = aStar(worldMap1, (7,0), (0,9) )
-  print NodeToPath(path)
-  print "Cost: " + str(path.g)
+        print("Error reading heuristic option.. Defaulting to Manhattan")
 
-  worldMap2 = parseWorld(world2,r2,c2)
-  path2 = aStar(worldMap2, (7,0), (0,9) )
-  print NodeToPath(path2)
-  print "Cost: " + str(path2.g)
+  print("Using world file: " + worldFile)
+
+  (world,nRows,nCols) = readWorld(worldFile)
+  worldMap = parseWorld(world,nRows,nCols)
+  (path, nSearched) = aStar(worldMap, (7,0), (0,9) )
+
+  if path is None:
+    print("No path available to the goal")
+  else:
+    print NodeToPath(path)
+  print("Cost: " + str(path.g))
+  print("Nodes searched: " + str(nSearched))
 
 if __name__ == '__main__':
   main(sys.argv[1:])
