@@ -66,12 +66,12 @@ def aStar(world, start, goal):
   rootNode.g = 0
   rootNode.f = rootNode.h
   lOpen.append(rootNode)
+  print("Starting search..")
   while len(lOpen) != 0:
     currentNode = minCost(lOpen)
     lOpen.remove(currentNode)
     if currentNode == goal:
-      lClosed.append(currentNode)
-      return (currentNode, len(lClosed))
+      return currentNode
     lClosed.append(currentNode)
     for (nextLocation,cost) in world[currentNode.pos]:      
       nextNode = Node(currentNode, nextLocation)
@@ -79,14 +79,13 @@ def aStar(world, start, goal):
       nextNode.h = Heuristic.selected(nextNode.pos, goal)
       nextNode.f = nextNode.g + nextNode.h
       if nextNode.pos == goal:
-        lClosed.append(nextNode)
-        return (nextNode, len(lClosed))
+        return nextNode
       if lowerCostExists(lOpen, nextNode) or lowerCostExists(lClosed, nextNode):
         pass
       else:
         lOpen.append(nextNode)
     lClosed.append(currentNode)
-  return (None, len(lClosed))
+  return None
 
 def readWorld(filename):
   world = []
@@ -183,28 +182,15 @@ def main(argv):
       else:
         print("No -h/--heuristic option specified.. Defaulting to Manhattan")
         Heuristic.selected = staticmethod(Heuristic.Manhattan)
-
-
   worldMap1 = parseWorld(world1,r1,c1)
-  print "World 1:"
-  (path, nodeCount) = aStar(worldMap1, (7,0), (0,9) )
-  if path is None:
-    print "No path available."
-  else:
-    print NodeToPath(path)
-    print "Cost: " + str(path.g)
-  print "Nodes searched: " + str(nodeCount)
+  path = aStar(worldMap1, (7,0), (0,9) )
+  print NodeToPath(path)
+  print "Cost: " + str(path.g)
 
   worldMap2 = parseWorld(world2,r2,c2)
-  print "\n"
-  print "World 2:"
-  (path2, nodeCount2) = aStar(worldMap2, (7,0), (0,9) )
-  if path2 is None:
-    print "No path available."
-  else:
-    print NodeToPath(path2)
-    print "Cost: " + str(path2.g)
-  print "Nodes searched: " + str(nodeCount2)
+  path2 = aStar(worldMap2, (7,0), (0,9) )
+  print NodeToPath(path2)
+  print "Cost: " + str(path2.g)
 
 if __name__ == '__main__':
   main(sys.argv[1:])
