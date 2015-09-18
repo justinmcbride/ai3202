@@ -76,7 +76,7 @@ def aStar(world, start, goal):
     lOpen.remove(currentNode)
     if currentNode == goal:
       lClosed.append(currentNode)
-      return (currentNode, len(lClosed))
+      return (currentNode, len(lClosed)+len(lOpen))
     lClosed.append(currentNode)
     for (nextLocation,cost) in world[currentNode.pos]:      
       nextNode = Node(currentNode, nextLocation)
@@ -85,7 +85,7 @@ def aStar(world, start, goal):
       nextNode.f = nextNode.g + nextNode.h
       if nextNode.pos == goal:
         lClosed.append(nextNode)
-        return (nextNode, len(lClosed))
+        return (nextNode, len(lClosed)+len(lOpen))
       if lowerCostExists(lOpen, nextNode) or lowerCostExists(lClosed, nextNode):
         pass
       else:
