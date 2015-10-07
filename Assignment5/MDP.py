@@ -27,15 +27,20 @@ MOVE_FAIL_RIGHT = 0.1
 GAMMA = 0.9
 
 class DIR_UP:
-  pass
+  def __str__(self):
+    return "Up"
 class DIR_DOWN:
-  pass
+  def __str__(self):
+    return "Down"
 class DIR_LEFT:
-  pass
+  def __str__(self):
+    return "Left"
 class DIR_RIGHT:
-  pass
+  def __str__(self):
+    return "Right"
 class DIR_GOAL:
-  pass
+  def __str__(self):
+    return "GOAL"
 
 class World:
   def __init__(self, in_map, rows, cols):
@@ -47,8 +52,10 @@ class World:
     return self.map[row][col]
 
 class Node:
-  def __init__(self, loc, tiletype):
-    self.position = loc
+  def __init__(self, row, col, tiletype):
+
+    self.row = row
+    self.col = col
     self.type = tiletype
 
     if tiletype == TILE_GOAL:
@@ -58,24 +65,22 @@ class Node:
       self.utility = 0
       self.bestDirection = None
 
-    if (tiletype == TILE_NORMAL or tiletype == TILE_WALL):
-      self.reward = REWARD_NORMAL
-    elif (tiletype == TILE_MOUNTAIN): 
+    if (tiletype == TILE_MOUNTAIN): 
       self.reward = REWARD_MOUNTAINS
     elif (tiletype == TILE_SNAKE): 
       self.reward = REWARD_SNAKE
     elif (tiletype == TILE_BARN):
       self.reward = REWARD_BARN
+    else:
+      self.reward = REWARD_NORMAL
+
+    # print self
+
+  def position(self):
+    return "({},{})".format(self.row,self.col)
 
   def __str__(self):
-    return "Node: Location={},utility={},direction={}".format(self.position, self.utility, self.bestDirection)
-
-# Use recursion and induction to print out the path
-def NodeToPath(node):
-  if node.parent == None:
-    return "{}".format(node.pos)
-  else:
-    return "{} => {}".format(NodeToPath(node.parent), node.pos)
+    return "Node: Location={},utility={},direction={},reward={}".format(self.position(), self.utility, self.bestDirection, self.reward)
 
 def Utility(world, node):
   # These two cases should not be inspected
@@ -84,12 +89,28 @@ def Utility(world, node):
   if node.type == TILE_GOAL:
     return None
 
-  (row, col) = node.position
+  row = node.row
+  col = node.col
   # Retrieve the utility of all possible moves
-  util_up = (world.NodeAt(row-1,col).utility) if ((row-1) >= 0) else 0
-  util_down = (world.NodeAt(row-1,col).utility) if ((row+1) < world.rows) else 0
-  util_left = (world.NodeAt(row,col-1).utility) if ((col-1) >= 0) else 0
-  util_right = (world.NodeAt(row,col+1).utility) if ((col+1) < world.cols) else 0
+  if (row-1) >= 0:
+    util_up = (world.NodeAt(row-1,col).utility)
+  else:
+    util_up = 0
+
+  if (row+1) < world.rows:
+    util_down = (world.NodeAt(row+1,col).utility)
+  else:
+    util_down = 0
+
+  if (col-1) >= 0:
+    util_left = (world.NodeAt(row,col-1).utility)
+  else:
+    util_left = 0
+
+  if (col+1) < world.cols:
+    util_right = (world.NodeAt(row,col+1).utility)
+  else:
+    util_right = 0
 
   # Calculate the expected utilities for each move
   eu_up = (MOVE_SUCCESS * util_up) + (MOVE_FAIL_RIGHT * util_right) + (MOVE_FAIL_LEFT * util_left)
@@ -111,7 +132,7 @@ def Utility(world, node):
     maxEU = eu_right
     node.bestDirection = DIR_RIGHT
 
-  newUtility = node.reward + (GAMMA * maxEU)
+  newUtility = float(node.reward + (GAMMA * maxEU))
   delta = abs(node.utility - newUtility)
 
   node.utility = newUtility
@@ -136,9 +157,9 @@ def ShortestPath(world, startX, startY):
   while node.bestDirection != DIR_GOAL:
     print node
     if node.bestDirection == DIR_UP:
-      row += 1
-    elif node.bestDirection == DIR_DOWN:
       row -= 1
+    elif node.bestDirection == DIR_DOWN:
+      row += 1
     elif node.bestDirection == DIR_LEFT:
       col -= 1
     elif node.bestDirection == DIR_RIGHT:
@@ -159,7 +180,7 @@ def readWorld(filename):
         break
       nElems = len(elems)
       for e in elems:
-        currentRow.append( Node( (nRow,col), int(e) ) )
+        currentRow.append( Node( nRow, col, int(e) ) )
         col += 1
       world.append(currentRow)
       nRow += 1
